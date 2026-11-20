@@ -142,23 +142,48 @@ tail -f /root/kit/setup.log
 
 ### 4.5 启动并打开界面
 
-服务器上，**推荐后台常驻**（systemd 托管，SSH 断线不影响，机器重启后自动拉起）：
+服务器上，**前台启动**（默认）：
 
 ```bash
 cd /root/kit
-bash 04_start.sh --daemon
+bash 04_start.sh
 ```
 
-常用操作：
+**连接一断，服务就停**。这是默认行为，也是大多数人想要的：`Ctrl+C` 或 SSH 断开 → 进程收到 `SIGHUP` → ComfyUI 退出，端口释放。
+
+只有当你想让服务脱离终端长期运行时，才用 `--daemon`：
 
 | 命令 | 作用 |
 | --- | --- |
-| `bash 04_start.sh --daemon` | 后台启动 + 开机自启 |
+| `bash 04_start.sh` | 前台运行，断线即停（默认） |
+| `bash 04_start.sh --daemon` | systemd 托管：断线不停、开机自启 |
 | `bash 04_start.sh --stop` | 停止并取消自启 |
 | `bash 04_start.sh --restart` | 重启 |
 | `bash 04_start.sh --status` | 状态 |
-| `bash 04_start.sh --logs` | 跟踪日志（Ctrl+C 只退日志） |
-| `bash 04_start.sh` | 前台运行，SSH 断开即退出（调试用） |
+| `bash 04_start.sh --logs` | 跟踪日志（Ctrl+C 只退日志，不影响服务） |
+
+#### 让“断网”也能尽快结束服务
+
+正常的 SSH 断开（关窗口、Ctrl+C）会立刻触发 `SIGHUP`，服务马上停。
+但**网络静默中断**（拔网线、切 WiFi）时没有 FIN 包，sshd 依赖 TCP 重传超时才判定对端消失 —— 默认可能十几分钟到两小时。这期间 python 进程还在跑。
+
+让它 45 秒内就判定：
+
+```bash
+cat >> /etc/ssh/sshd_config <<'EOF'
+ClientAliveInterval 15
+ClientAliveCountMax 3
+EOF
+systemctl reload ssh
+```
+
+之后网络真断了，约 45 秒 sshd 关闭会话 → 你的 shell 收到 `SIGHUP` → ComfyUI 退出。
+
+验证端口是否释放：
+
+```bash
+ss -ltnp | grep 8188 || echo '端口已释放'
+```
 
 看到 `Starting server` 后，在你电脑上另开一个 PowerShell（**也别关**）：
 

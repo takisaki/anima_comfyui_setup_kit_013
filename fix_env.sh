@@ -93,10 +93,24 @@ do_net() {
   echo "（<0.3 MB/s 就别下模型了，先解决带宽）"
 }
 
+do_ssh() {
+  local f=/etc/ssh/sshd_config
+  [ -f "$f" ] || { echo "!! 没有 $f"; return 1; }
+  if grep -qE "^ClientAliveInterval" "$f"; then
+    echo "==> 已配置，跳过"
+  else
+    printf "\nClientAliveInterval 15\nClientAliveCountMax 3\n" >> "$f"
+    echo "==> 已写入 ClientAliveInterval 15 / CountMax 3"
+  fi
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || echo "   (reload 失败，可手动 systemctl reload ssh)"
+  echo "   效果：网络静默中断约 45 秒后会话关闭，前台运行的服务随之退出"
+}
+
 case "${1:-doctor}" in
   doctor) doctor ;;
   apt) do_apt ;;
   gpu) do_gpu ;;
   net) do_net ;;
-  *) echo "用法: bash fix_env.sh [doctor|apt|gpu|net]"; exit 1 ;;
+  ssh) do_ssh ;;
+  *) echo "用法: bash fix_env.sh [doctor|apt|gpu|net|ssh]"; exit 1 ;;
 esac

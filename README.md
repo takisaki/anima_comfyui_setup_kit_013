@@ -61,16 +61,21 @@ scp D:\你的路径\cloud-kit.zip root@<服务器IP>:/root/
 ### 部署完成后
 
 ```bash
-# 服务器：后台常驻（推荐，SSH 断线不影响，重启后自动拉起）
-cd /root/kit && bash 04_start.sh --daemon
-
-# 停止 / 查看状态 / 看日志
-bash 04_start.sh --stop
-bash 04_start.sh --status
-bash 04_start.sh --logs
+# 服务器：前台启动（默认，连接一断服务就停）
+cd /root/kit && bash 04_start.sh
 ```
 
-> 不带参数是**前台模式**，SSH 一断进程就退出。想要“断线不影响”就用 `--daemon`（systemd 托管）。
+这是**预期行为**：SSH 断开 → 服务退出。想让服务脱离终端常驻，才用 `--daemon`：
+
+```bash
+bash 04_start.sh --daemon    # 后台常驻 + 开机自启
+bash 04_start.sh --stop      # 停止并取消自启
+bash 04_start.sh --status    # 状态
+bash 04_start.sh --logs      # 日志
+```
+
+> 断网（不是正常断开）时，服务是否退出取决于 sshd 多久发现对端消失，默认可能要等很久。
+> 想让它几十秒内就停，配一次 `ClientAliveInterval`，见 [docs/guide.md](docs/guide.md) 4.5 节。
 
 ```powershell
 # 本机：开 SSH 隧道（窗口别关）
