@@ -23,14 +23,32 @@
 
 ## 2. 拿到部署包（三种方式，选一个）
 
-### 方式 A：服务器直接下载（最快，推荐）
+### 方式 A：服务器直接下载（推荐）
+
+GitHub 直连在国内云上经常「连上了但收不到数据」，所以用带镜像回退的脚本：
 
 ```bash
-# 在【服务器】上执行
-wget -O /root/cloud-kit.zip https://github.com/takisaki/anima_comfyui_setup_kit_013/releases/latest/download/cloud-kit.zip
+# 在【服务器】上执行（需要先拿到 get_kit.sh，见下方说明）
+bash get_kit.sh
 ```
 
-不经过你的电脑。如果服务器访问 GitHub 很慢（国内常见），用方式 B。
+它会依次试 GitHub 直连 → ghfast.top → gh-proxy.com → ghproxy.net，哪个能用就用哪个，成功后直接打印下一步命令。
+
+```bash
+# 手工版（不想用脚本就粘这段）
+U=https://github.com/takisaki/anima_comfyui_setup_kit_013/releases/latest/download/cloud-kit.zip
+for p in "" https://ghfast.top/ https://gh-proxy.com/ https://ghproxy.net/; do
+  echo "尝试 ${p:-直连}"
+  wget -c -T 30 -O /root/cloud-kit.zip "${p}${U}" && break
+done
+ls -l /root/cloud-kit.zip
+```
+
+> 鸡生蛋问题：`get_kit.sh` 本身也在仓库里。两个办法拿到它——
+> 1. 直接粘上面那段「手工版」；
+> 2. 或者从 https://raw.githubusercontent.com/takisaki/anima_comfyui_setup_kit_013/main/get_kit.sh 下载（同样可能被墙，用 `https://ghfast.top/` 前缀）。
+>
+> 国内云网络不通时，最稳的还是方式 B。
 
 ### 方式 B：下载到电脑再上传
 
