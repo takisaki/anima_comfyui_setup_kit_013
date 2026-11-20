@@ -13,9 +13,16 @@ tar -xzf "$KIT/nodes.tar.gz" -C "$COMFY"
 c_ok "节点数: $(ls -1d "$COMFY"/custom_nodes/*/ 2>/dev/null | wc -l)"
 
 c_log "安装工作流"
-mkdir -p "$COMFY/user/default/workflows"
-cp -f "$KIT"/workflows/*.json "$COMFY/user/default/workflows/" 2>/dev/null || true
-c_ok "工作流: $(ls -1 "$COMFY"/user/default/workflows/*.json 2>/dev/null | wc -l) 个"
+WF_DIR="$COMFY/user/default/workflows"
+mkdir -p "$WF_DIR"
+# 优先用 tar：tar 原样保存文件名字节，不受 unzip 的 locale 影响（中文名不会乱码）
+if [ -f "$KIT/workflows.tar.gz" ]; then
+  rm -f "$WF_DIR"/*.json 2>/dev/null || true
+  tar -xzf "$KIT/workflows.tar.gz" -C "$WF_DIR"
+elif [ -d "$KIT/workflows" ]; then
+  cp -f "$KIT"/workflows/*.json "$WF_DIR/" 2>/dev/null || true
+fi
+c_ok "工作流: $(ls -1 "$WF_DIR"/*.json 2>/dev/null | wc -l) 个"
 
 # shellcheck disable=SC1091
 source "$COMFY/venv/bin/activate"
