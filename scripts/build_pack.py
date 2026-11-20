@@ -5,11 +5,9 @@ Usage:
     python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
 
 Produces in --out:
-    comfyui.tar.gz   ComfyUI program files (no models/nodes/venv/user)
+    comfyui.tar.gz   ComfyUI program files (no models/custom_nodes/user at top level)
     nodes.tar.gz     custom_nodes/ (no .git/__pycache__)
     cloud-kit.zip    scripts + workflows + the two tarballs
-
-The zip is what you upload to the GPU instance.
 """
 import argparse
 import os
@@ -17,32 +15,33 @@ import sys
 import tarfile
 import zipfile
 
-COMFY_SKIP = {
-    "models", "custom_nodes", "output", "input", "temp", "user", "venv", ".venv",
-    "cloud-kit", "dist", "__pycache__", ".git", ".github", "tests", "tests-unit",
+# 只排除 ComfyUI 顶层的这些目录；子目录里同名的（例如 comfy/ldm/models）必须保留
+TOP_SKIP = {
+    "models", "custom_nodes", "output", "input", "temp", "user",
+    "venv", ".venv", "dist", "cloud-kit",
 }
-# 这些是构建产物/打包文件，不属于 ComfyUI 程序本体
-SKIP_EXT = {".pyc", ".pyo", ".log", ".tar", ".gz", ".zip", ".7z"}
+# 任意层级都要排除
+NEST_SKIP = {"__pycache__", ".git", ".github", ".pytest_cache", ".mypy_cache"}
+SKIP_EXT = {".pyc", ".pyo", ".log", ".tar", ".gz", ".zip", ".7z", ".pt.tmp"}
 SKIP_PREFIX = ("extras_", "cloud-kit")
 
 
-def keep(name: str) -> bool:
+def keep_file(name: str) -> bool:
     return (
-        name not in COMFY_SKIP
-        and not name.startswith(SKIP_PREFIX)
+        not name.startswith(SKIP_PREFIX)
         and os.path.splitext(name)[1].lower() not in SKIP_EXT
     )
 
 
-def add_tree(tar: tarfile.TarFile, src: str, prefix: str, skip=COMFY_SKIP) -> int:
+def add_tree(tar: tarfile.TarFile, src: str, prefix: str, skip=NEST_SKIP) -> int:
     n = 0
     for dirpath, dirnames, filenames in os.walk(src):
-        dirnames[:] = [d for d in dirnames if keep(d) and d not in skip]
+        dirnames[:] = [d for d in dirnames if d not in skip]
         rel = os.path.relpath(dirpath, src)
         arc = prefix if rel == "." else prefix + "/" + rel.replace(os.sep, "/")
         tar.add(dirpath, arcname=arc, recursive=False)
         for fn in filenames:
-            if not keep(fn):
+            if not keep_file(fn):
                 continue
             tar.add(os.path.join(dirpath, fn), arcname=arc + "/" + fn)
             n += 1
@@ -54,7 +53,7 @@ def build_comfyui(comfy: str, out: str) -> None:
     with tarfile.open(dst, "w:gz") as tar:
         for entry in sorted(os.listdir(comfy)):
             p = os.path.join(comfy, entry)
-            if not keep(entry):
+            if entry in TOP_SKIP or not keep_file(entry):
                 continue
             if os.path.isfile(p):
                 tar.add(p, arcname="ComfyUI/" + entry)
@@ -69,7 +68,7 @@ def build_nodes(comfy: str, out: str) -> None:
     with tarfile.open(dst, "w:gz") as tar:
         for d in sorted(os.listdir(src)):
             p = os.path.join(src, d)
-            if os.path.isdir(p) and keep(d):
+            if os.path.isdir(p) and d not in NEST_SKIP:
                 add_tree(tar, p, "custom_nodes/" + d)
     print("nodes.tar.gz    %.1f MB" % (os.path.getsize(dst) / 1e6))
 
@@ -95,14 +94,13 @@ def build_zip(repo: str, out: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--comfy", required=True, help="path to a local ComfyUI checkout")
+    ap.add_argument("--comfy", required=True)
     ap.add_argument("--out", default="dist")
-    ap.add_argument("--skip-comfyui", action="store_true", help="reuse existing comfyui.tar.gz")
+    ap.add_argument("--skip-comfyui", action="store_true")
     args = ap.parse_args()
 
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     os.makedirs(args.out, exist_ok=True)
-
     if not args.skip_comfyui:
         build_comfyui(args.comfy, args.out)
     build_nodes(args.comfy, args.out)
