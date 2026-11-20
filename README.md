@@ -34,7 +34,7 @@
 apt-get update && apt-get install -y unzip
 rm -f /root/cloud-kit.zip
 U=https://github.com/takisaki/anima_comfyui_setup_kit_013/releases/latest/download/cloud-kit.zip
-for p in https://gh-proxy.com/ https://ghfast.top/ https://ghproxy.net/; do
+for p in https://ghfast.top/ https://gh-proxy.com/ https://ghproxy.net/; do
   curl -fL -C - --connect-timeout 10 --speed-limit 2048 --speed-time 30 --max-time 900 \
        -o /root/cloud-kit.zip "${p}${U}" && break
 done
