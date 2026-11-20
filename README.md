@@ -526,3 +526,20 @@ cd /root/kit && bash 03_models.sh --check
 - See-through 拆层不可用：需要 `bitsandbytes` + 12GB 以上显存 + 1280px 输入，11GB 的 2080Ti 跑不动
 - fp8/fp4 加速关闭：`comfy_kitchen` 的 CUDA 后端要求 CUDA 13+，本环境是 12.8，会自动降级到 eager 实现（不影响出图）
 - 工作流 `WAI-NOOB_10MIN+` 需要 SDXL 底模，HF/ModelScope 无可直连版本，需自行上传
+
+### A16. 维护者：发布新版本
+
+改了脚本之后：
+
+```bash
+# 1. 重新打包（需要本地有一份 ComfyUI 目录）
+python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
+
+# 2. 打 tag 并发布（自动读 GCM 里的 GitHub 凭据，不用手贴 token）
+python3 scripts/publish_release.py --repo takisaki/anima_comfyui_setup_kit_013 \
+  --tag v1.1 --file dist/cloud-kit.zip --name cloud-kit.zip \
+  --notes "本版改动：..."
+```
+
+`publish_release.py` 会：找/建 release → 删同名旧资产 → 上传新资产（失败重试 3 次）。
+使用者那边 `releases/latest/download/cloud-kit.zip` 会自动指向最新版本，不用改文档。
