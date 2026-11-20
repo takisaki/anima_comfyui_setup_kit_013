@@ -37,9 +37,11 @@ for p in https://gh-proxy.com/ https://ghfast.top/ https://ghproxy.net/; do
   curl -fL -C - --connect-timeout 10 --speed-limit 2048 --speed-time 30 --max-time 900 \
        -o /root/cloud-kit.zip "${p}${U}" && break
 done
+```
 ```bash
 # 2) 解压到 /root/kit
 rm -rf /root/kit && unzip -q /root/cloud-kit.zip -d /root/kit
+```
 ```bash
 # 3) 安装
 cd /root/kit && bash setup_all.sh --yes
