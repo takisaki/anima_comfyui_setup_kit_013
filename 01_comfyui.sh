@@ -58,7 +58,7 @@ pip_selftest || exit 1
 pip_run -q -U pip wheel setuptools || c_warn "pip 升级失败（不影响后续）"
 
 c_log "4/5 PyTorch"
-if python -c "import torch,sys; v=tuple(map(int,torch.__version__.split('+')[0].split('.')[:2])); sys.exit(0 if (torch.cuda.is_available() and v>=(2,7)) else 1)" 2>/dev/null; then
+if cuda_smoke_test; then
   c_ok "已有可用 CUDA torch: $(python -c 'import torch;print(torch.__version__)')"
 elif bash "$KIT/install_torch.sh"; then
   c_ok "torch 安装完成"
