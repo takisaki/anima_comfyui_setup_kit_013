@@ -146,10 +146,12 @@ EOF
 
 # pip_run <pip 参数...>：按候选顺序尝试，第一个成功的记住
 pip_run() {
-  local idx
+  local idx TMO=""
+  command -v timeout >/dev/null 2>&1 && TMO="timeout 2700"
   while read -r idx; do
     [ -n "$idx" ] || continue
-    if python -m pip install $PIP_FLAGS --index-url "$idx" "$@"; then
+    c_log "pip 源: $idx"
+    if $TMO python -m pip install $PIP_FLAGS --index-url "$idx" "$@"; then
       save_state PIP_INDEX "$idx"
       write_pip_conf "$idx"
       return 0
