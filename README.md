@@ -31,6 +31,7 @@
 
 ```bash
 # 1) 取部署包（GitHub 直连在国内云经常不通，优先用代理）
+apt-get update && apt-get install -y unzip
 rm -f /root/cloud-kit.zip
 U=https://github.com/takisaki/anima_comfyui_setup_kit_013/releases/latest/download/cloud-kit.zip
 for p in https://gh-proxy.com/ https://ghfast.top/ https://ghproxy.net/; do
