@@ -237,6 +237,22 @@ gpu_driver_major() {
   echo "${v:-0}"
 }
 
+# 真正跑一次 CUDA 算子：能捕获 "no kernel image is available"（sm 不被支持）这类
+# “torch 装上了但用不了”的情况，仅看 torch.cuda.is_available() 是不够的
+cuda_smoke_test() {
+  python - <<'PY' >/dev/null 2>&1
+import sys
+try:
+    import torch
+    if not torch.cuda.is_available():
+        sys.exit(1)
+    torch.zeros(8, device="cuda").add_(1).cpu()
+    torch.cuda.synchronize()
+except Exception:
+    sys.exit(1)
+PY
+}
+
 # 返回 0=已就绪 3=刚装完需重启 1=失败
 # 要求 >= 560：PyTorch 2.7+ 的 CUDA 12.6/12.8 wheel 需要新驱动
 ensure_gpu_driver() {
