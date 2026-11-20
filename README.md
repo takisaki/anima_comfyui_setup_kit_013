@@ -1,49 +1,164 @@
 # ComfyUI 云端一键部署套件（Anima / 2080Ti 调优）
 
-在**裸 Ubuntu GPU 实例**上从零部署 ComfyUI + Anima 工作流的一键脚本。
-面向 RTX 2080Ti 11GB（Turing / sm_75），所有镜像源在运行时探测，不写死任何地址。
+在**裸 Ubuntu GPU 实例**上从零部署 ComfyUI + Anima 出图工作流，面向 RTX 2080Ti 11GB（Turing / sm_75）。
 
-```bash
-apt-get update && apt-get install -y unzip
-rm -rf /root/kit && unzip -q cloud-kit.zip -d /root/kit
-cd /root/kit && bash setup_all.sh --yes
-```
-
-脚本会自己完成：装 NVIDIA 驱动（580）→ 自动重启并续跑 → CUDA 版 PyTorch（2.9.1+cu128）
-→ ComfyUI → 10 个自定义节点 → 14 GB 模型（ModelScope 加速）。全程无需人工干预。
-
-## 仓库内容
-
-| 文件 | 作用 |
-| --- | --- |
-| `setup_all.sh` | 编排器：驱动 → 01 → 02 → 03，失败自动清缓存重试 |
-| `lib.sh` | 网络层：apt/pip/下载的候选源、测速选路、断点续传、状态缓存 |
-| `00_preflight.sh` | 环境体检（只读，不修改系统） |
-| `01_comfyui.sh` | 系统依赖 + venv + torch + ComfyUI 本体 + requirements |
-| `02_nodes.sh` | 解压自定义节点、装各自依赖、铺工作流 |
-| `03_models.sh` | 按 `models.tsv` 下载模型，hf-mirror / ModelScope 自动选源 |
-| `install_torch.sh` | 单独装 CUDA 版 torch（多版本回退） |
-| `fix_env.sh` | 急救：`doctor` / `apt` / `gpu` / `net` |
-| `04_start.sh` / `05_verify.sh` | 启动 / 自检 |
-| `models.tsv` | 模型清单（分档、HF 路径、ModelScope 仓库、字节数） |
-| `workflows/` | 8 个 ComfyUI 工作流（Anima 出图、线稿上色、姿势控制、局部重绘、表情差分） |
-| `scripts/build_pack.py` | 从本地 ComfyUI 目录打包出 `cloud-kit.zip` |
-
-## 构建发布包
-
-仓库里只放脚本，二进制体积的东西（ComfyUI 源码、节点包）由构建脚本从你的本地 ComfyUI 目录打包：
-
-```bash
-python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
-# 或
-./scripts/build_pack.sh /path/to/ComfyUI dist
-```
-
-产出 `dist/cloud-kit.zip`（约 76 MB），上传到服务器解压即可用。
+一条命令完成：装显卡驱动 → 自动重启续跑 → CUDA 版 PyTorch → ComfyUI → 10 个自定义节点 → 14 GB 模型。
 
 ---
 
-## 0. 先看清楚你这台机器
+## 0. 这套东西是什么
+
+| 包含 | 不包含 |
+| --- | --- |
+| 安装脚本、8 个工作流、10 个节点包、版本矩阵与踩坑结论 | 模型权重（脚本自己下，约 14 GB） |
+| | 你的私人 LoRA（需要的话自己传） |
+
+**你不需要**在电脑上装 Python、ComfyUI 或提前下模型。所有安装动作都在服务器上完成。
+
+## 1. 你只需要准备三样
+
+1. 一台 GPU 云服务器：Ubuntu 22.04 + NVIDIA 显卡 + **40 GB 以上可用磁盘**
+2. 服务器的**公网 IP** 和 **SSH 端口**
+3. 一个能开终端的电脑（Windows 的 PowerShell 就够）
+
+## 2. 拿到部署包（三种方式，选一个）
+
+### 方式 A：服务器直接下载（最快，推荐）
+
+```bash
+# 在【服务器】上执行
+wget -O /root/cloud-kit.zip https://github.com/takisaki/anima_comfyui_setup_kit_013/releases/latest/download/cloud-kit.zip
+```
+
+不经过你的电脑。如果服务器访问 GitHub 很慢（国内常见），用方式 B。
+
+### 方式 B：下载到电脑再上传
+
+1. 浏览器打开 https://github.com/takisaki/anima_comfyui_setup_kit_013/releases
+2. 下载 `cloud-kit.zip`（约 76 MB）
+3. 上传到服务器：
+
+```powershell
+# 在【你的电脑】上执行（PowerShell）
+scp D:\ComfyUI\cloud-kit.zip root@<服务器IP>:/root/
+```
+
+不是 22 端口就加 `-P 端口号`，用户名不是 root 就换掉 `root@`。
+
+### 方式 C：克隆仓库自己构建（要改脚本的人）
+
+```bash
+git clone https://github.com/takisaki/anima_comfyui_setup_kit_013.git
+cd anima_comfyui_setup_kit_013
+python3 scripts/build_pack.py --comfy /path/to/your/ComfyUI --out dist
+```
+
+需要你本地已经有一个 ComfyUI 目录（用来打包节点和源码）。普通部署用不到。
+
+## 3. 文件放在哪 / 命令在哪执行
+
+**两个终端，别搞混：**
+
+| | 你的电脑（Windows） | 服务器（SSH 登录后） |
+| --- | --- | --- |
+| 提示符 | `PS C:\Users\ZWJ>` | `root@xxxx:~#` |
+| 干什么 | 上传文件、开端口隧道 | 装环境、下模型、启动 ComfyUI |
+| 怎么打开 | 开始菜单搜 PowerShell | 先 `ssh root@<IP>` |
+
+**服务器上的目录约定（照抄即可）：**
+
+```
+/root/
+├── cloud-kit.zip        ← 上传的部署包
+├── kit/                 ← 解压后的脚本目录，所有 bash 命令都在这里执行
+│   ├── setup_all.sh
+│   ├── lib.sh
+│   └── ...
+└── ComfyUI/             ← 安装后自动生成
+    ├── models/          ← 模型下到这里
+    └── output/          ← 出图存这里
+```
+
+**记住一句话：先 `cd /root/kit`，再 `bash xxx.sh`。**
+
+## 4. 三条命令装完
+
+```bash
+# 1) 解压到 /root/kit（-d 会自动创建目录）
+rm -rf /root/kit
+unzip -q /root/cloud-kit.zip -d /root/kit
+
+# 2) 进入脚本目录
+cd /root/kit
+
+# 3) 开始安装
+bash setup_all.sh --yes
+```
+
+提示 `unzip: command not found` 就先装：
+
+```bash
+apt-get update && apt-get install -y unzip
+```
+
+### 接下来会发生什么
+
+| 阶段 | 内容 | 耗时 |
+| --- | --- | --- |
+| 驱动 | 没有 `nvidia-smi` 时装 580，**自动重启** | 3-5 分钟 + 重启 |
+| 重启后 | systemd 服务自动续跑，不用重新登录 | 1 分钟 |
+| 01 | venv + torch 2.9.1 + ComfyUI + requirements | 5-10 分钟 |
+| 02 | 10 个节点 + 依赖 + 8 个工作流 | 5-10 分钟 |
+| 03 | 14 GB 模型（ModelScope 加速） | 5-30 分钟 |
+
+**重启后你不需要做任何事。** 想盯进度就再开一个终端：
+
+```bash
+tail -f /root/kit/setup.log
+```
+
+看到 `部署完成` 就好了。中途 SSH 断开也不影响，服务在后台跑。
+
+### 4.5 启动并打开界面
+
+服务器上（**这个窗口别关**）：
+
+```bash
+cd /root/kit
+bash 04_start.sh
+```
+
+看到 `Starting server` 后，在你电脑上另开一个 PowerShell（**也别关**）：
+
+```powershell
+ssh -N -L 8188:127.0.0.1:8188 root@<服务器IP>
+```
+
+浏览器打开 **http://127.0.0.1:8188**。
+
+> ComfyUI 没有登录鉴权，所以走 SSH 隧道而不是直接开端口。
+
+### 4.6 出图前自检
+
+```bash
+cd /root/kit && bash 05_verify.sh
+```
+
+三段输出分别是：模型齐不齐、10 个节点能否导入（结尾要 `退出码: 0`）、磁盘占用。
+
+## 5. 装完想改参数
+
+- 模型三档：见 A4（`TIER=core|std|pro bash 03_models.sh`）
+- 显存不够 / 想调快慢：见 A8
+- 想换工作流：界面左上「工作流 → 打开」，8 个都在里面
+
+---
+
+## 附录：详细参考
+
+> 下面是细节和排错资料，第一次部署可以先跳过，遇到问题再查。
+
+### A0. 先看清楚你这台机器
 
 | 资源 | 你的配置 | 结论 |
 | --- | --- | --- |
@@ -74,7 +189,7 @@ python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
 
 ---
 
-## 1. 包里有什么
+### A1. 包里有什么
 
 | 文件 | 大小 | 必需 | 说明 |
 | --- | --- | --- | --- |
@@ -85,7 +200,7 @@ python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
 
 ---
 
-## 2. 上传（在你的 Windows 上操作）
+### A2. 上传（在你的 Windows 上操作）
 
 Windows 10/11 自带 `ssh` 和 `scp`。最省事：双击 `upload.bat`，按提示填 IP / 端口 / 用户名。
 
@@ -113,7 +228,7 @@ ssh root@<服务器IP>
 
 ---
 
-## 3. 一键安装
+### A3. 一键安装
 
 ```bash
 apt-get update && apt-get install -y unzip
@@ -147,7 +262,7 @@ bash setup_all.sh --yes
 
 ---
 
-## 4. 模型三档，按磁盘和时间选
+### A4. 模型三档，按磁盘和时间选
 
 ```bash
 TIER=core bash 03_models.sh    #  5.8 GB  Anima 全家桶（出图主力）
@@ -173,7 +288,7 @@ scp "D:\ComfyUI\models\checkpoints\WAI-SHUFFLE-NOOB_V-Pred-02.safetensors" ^
 
 ---
 
-## 5. 启动与访问（重点）
+### A5. 启动与访问（重点）
 
 ### 5.1 服务器上启动
 
@@ -205,7 +320,7 @@ LISTEN=0.0.0.0 bash 04_start.sh
 
 ---
 
-## 6. 自检
+### A6. 自检
 
 ```bash
 bash 05_verify.sh
@@ -217,7 +332,7 @@ bash 05_verify.sh
 
 ---
 
-## 7. 工作流对照
+### A7. 工作流对照
 
 `02_nodes.sh` 已把 8 个工作流拷到 `ComfyUI/user/default/workflows/`，界面左上「工作流 → 打开」即可。
 
@@ -235,7 +350,7 @@ bash 05_verify.sh
 
 ---
 
-## 8. 2080Ti 专属调参
+### A8. 2080Ti 专属调参
 
 ### 显存
 | 场景 | 显存 | 建议 |
@@ -264,7 +379,7 @@ EXTRA="--force-fp16" bash 04_start.sh
 
 ---
 
-## 9. 磁盘预算（50 GB 系统盘）
+### A9. 磁盘预算（50 GB 系统盘）
 
 | 项目 | 占用 |
 | --- | --- |
@@ -285,7 +400,7 @@ find /root/ComfyUI/output -type f -mtime +7 -delete   # 清老图
 
 ---
 
-## 10. 常见问题
+### A10. 常见问题
 
 **① `nvidia-smi` 找不到**
 驱动没装或选的不是 GPU 机型。Ubuntu 上装驱动需要重启，直接换镜像重开机器快得多。
@@ -313,7 +428,7 @@ find /root/ComfyUI/output -type f -mtime +7 -delete   # 清老图
 
 ---
 
-## 11. 目录对照（本机 → 云端）
+### A11. 目录对照（本机 → 云端）
 
 | 本机 | 云端 |
 | --- | --- |
@@ -325,7 +440,7 @@ find /root/ComfyUI/output -type f -mtime +7 -delete   # 清老图
 
 ---
 
-## 12. 环境问题速查（实测遇到的）
+### A12. 环境问题速查（实测遇到的）
 
 **① `apt-get update` 卡住 / 403**
 默认的 `archive.ubuntu.com` 很慢；`https://mirrors.aliyun.com` 在部分云上被拦返回 403。跑：
@@ -385,7 +500,7 @@ cp /root/upload/control_v11p_sd15s2_lineart_anime_fp16.safetensors /root/ComfyUI
 
 ---
 
-## 13. 后续更新
+### A13. 后续更新
 
 ```bash
 cd /root/ComfyUI && git pull     # 若是 zip 装的，重下 master.zip 覆盖程序文件
@@ -394,7 +509,7 @@ cd /root/kit && bash 03_models.sh --check
 ```
 
 在云端装了新的自定义节点后，想同步回本地：`scp -r root@IP:/root/ComfyUI/custom_nodes/<包名> D:\ComfyUI\custom_nodes\`
-## 14. 版本兼容性说明
+### A14. 版本兼容性说明
 
 这套脚本的版本组合是经过实测确定的，**随意升级会导致 ComfyUI 起不来**：
 
@@ -406,7 +521,7 @@ cd /root/kit && bash 03_models.sh --check
 
 排查顺序：`nvidia-smi` → `python -c "import torch;print(torch.cuda.is_available())"` → `python -c "import comfy_kitchen"`。
 
-## 15. 已知限制
+### A15. 已知限制
 
 - See-through 拆层不可用：需要 `bitsandbytes` + 12GB 以上显存 + 1280px 输入，11GB 的 2080Ti 跑不动
 - fp8/fp4 加速关闭：`comfy_kitchen` 的 CUDA 后端要求 CUDA 13+，本环境是 12.8，会自动降级到 eager 实现（不影响出图）

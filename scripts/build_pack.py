@@ -21,11 +21,17 @@ COMFY_SKIP = {
     "models", "custom_nodes", "output", "input", "temp", "user", "venv", ".venv",
     "cloud-kit", "dist", "__pycache__", ".git", ".github", "tests", "tests-unit",
 }
-SKIP_EXT = {".pyc", ".pyo", ".log"}
+# 这些是构建产物/打包文件，不属于 ComfyUI 程序本体
+SKIP_EXT = {".pyc", ".pyo", ".log", ".tar", ".gz", ".zip", ".7z"}
+SKIP_PREFIX = ("extras_", "cloud-kit")
 
 
 def keep(name: str) -> bool:
-    return name not in COMFY_SKIP and os.path.splitext(name)[1].lower() not in SKIP_EXT
+    return (
+        name not in COMFY_SKIP
+        and not name.startswith(SKIP_PREFIX)
+        and os.path.splitext(name)[1].lower() not in SKIP_EXT
+    )
 
 
 def add_tree(tar: tarfile.TarFile, src: str, prefix: str, skip=COMFY_SKIP) -> int:
