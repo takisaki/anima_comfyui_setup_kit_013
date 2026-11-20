@@ -1,0 +1,15 @@
+# 云端模型清单
+# 列: 分档|目标目录|文件名|HF路径|字节数|ModelScope仓库|ModelScope路径
+# 分档 1=core 2=std 3=pro；字节数 0 表示手动上传（不校验大小）
+# HF 基址: https://hf-mirror.com   ModelScope: https://www.modelscope.cn
+1|diffusion_models|anima-turbo-v1.1.safetensors|circlestone-labs/Anima/resolve/main/split_files/diffusion_models/anima-turbo-v1.1.safetensors|4182230656|circlestone-labs/Anima|split_files/diffusion_models/anima-turbo-v1.1.safetensors
+1|text_encoders|qwen_3_06b_base.safetensors|circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors|1192135096|circlestone-labs/Anima|split_files/text_encoders/qwen_3_06b_base.safetensors
+1|vae|qwen_image_vae.safetensors|circlestone-labs/Anima/resolve/main/split_files/vae/qwen_image_vae.safetensors|253806246|circlestone-labs/Anima|split_files/vae/qwen_image_vae.safetensors
+1|loras|anima_ref_adapter_v2_r64.safetensors|ElectronGirl/anima-ref-adapter/resolve/main/anima_ref_adapter_v2_r64.safetensors|183605032||
+2|checkpoints|sd-v1-5-inpainting.ckpt|stable-diffusion-v1-5/stable-diffusion-inpainting/resolve/main/sd-v1-5-inpainting.ckpt|4265437280|AI-ModelScope/stable-diffusion-inpainting|sd-v1-5-inpainting.ckpt
+2|controlnet|control_v11p_sd15_openpose_fp16.safetensors|webui/ControlNet-modules-safetensors/resolve/main/control_openpose-fp16.safetensors|722596338|AI-ModelScope/ControlNet-modules-safetensors|control_openpose-fp16.safetensors
+2|controlnet|control_v11p_sd15s2_lineart_anime_fp16.safetensors|lllyasviel/control_v11p_sd15s2_lineart_anime/resolve/main/diffusion_pytorch_model.safetensors|1445157124||
+2|ipadapter|ip-adapter_sd15.safetensors|h94/IP-Adapter/resolve/main/models/ip-adapter_sd15.safetensors|44642768|AI-ModelScope/IP-Adapter|models/ip-adapter_sd15.safetensors
+2|ipadapter|ip-adapter-plus_sd15.safetensors|h94/IP-Adapter/resolve/main/models/ip-adapter-plus_sd15.safetensors|98183288|AI-ModelScope/IP-Adapter|models/ip-adapter-plus_sd15.safetensors
+2|clip_vision|CLIP-ViT-H-14.safetensors|h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors|2528373448|AI-ModelScope/IP-Adapter|models/image_encoder/model.safetensors
+3|diffusion_models|anima-base-v1.0.safetensors|circlestone-labs/Anima/resolve/main/split_files/diffusion_models/anima-base-v1.0.safetensors|4182218328|circlestone-labs/Anima|split_files/diffusion_models/anima-base-v1.0.safetensors

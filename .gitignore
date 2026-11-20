@@ -1,0 +1,11 @@
+# 构建产物
+*.tar.gz
+*.zip
+dist/
+
+# 运行期状态
+.state.env
+setup.log
+nohup.out
+__pycache__/
+*.pyc
