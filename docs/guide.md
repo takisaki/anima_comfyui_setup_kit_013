@@ -142,12 +142,23 @@ tail -f /root/kit/setup.log
 
 ### 4.5 启动并打开界面
 
-服务器上（**这个窗口别关**）：
+服务器上，**推荐后台常驻**（systemd 托管，SSH 断线不影响，机器重启后自动拉起）：
 
 ```bash
 cd /root/kit
-bash 04_start.sh
+bash 04_start.sh --daemon
 ```
+
+常用操作：
+
+| 命令 | 作用 |
+| --- | --- |
+| `bash 04_start.sh --daemon` | 后台启动 + 开机自启 |
+| `bash 04_start.sh --stop` | 停止并取消自启 |
+| `bash 04_start.sh --restart` | 重启 |
+| `bash 04_start.sh --status` | 状态 |
+| `bash 04_start.sh --logs` | 跟踪日志（Ctrl+C 只退日志） |
+| `bash 04_start.sh` | 前台运行，SSH 断开即退出（调试用） |
 
 看到 `Starting server` 后，在你电脑上另开一个 PowerShell（**也别关**）：
 

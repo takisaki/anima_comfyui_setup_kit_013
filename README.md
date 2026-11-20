@@ -61,9 +61,16 @@ scp D:\你的路径\cloud-kit.zip root@<服务器IP>:/root/
 ### 部署完成后
 
 ```bash
-# 服务器：启动（窗口别关）
-cd /root/kit && bash 04_start.sh
+# 服务器：后台常驻（推荐，SSH 断线不影响，重启后自动拉起）
+cd /root/kit && bash 04_start.sh --daemon
+
+# 停止 / 查看状态 / 看日志
+bash 04_start.sh --stop
+bash 04_start.sh --status
+bash 04_start.sh --logs
 ```
+
+> 不带参数是**前台模式**，SSH 一断进程就退出。想要“断线不影响”就用 `--daemon`（systemd 托管）。
 
 ```powershell
 # 本机：开 SSH 隧道（窗口别关）
