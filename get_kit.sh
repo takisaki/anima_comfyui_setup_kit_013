@@ -8,7 +8,8 @@ REPO="takisaki/anima_comfyui_setup_kit_013"
 DEST="${DEST:-/root/cloud-kit.zip}"
 TAG="${TAG:-latest}"
 URL="https://github.com/$REPO/releases/$TAG/download/cloud-kit.zip"
-PROXIES=("" "https://ghfast.top/" "https://gh-proxy.com/" "https://ghproxy.net/" "https://mirror.ghproxy.com/")
+# 顺序按实测速度排：gh-proxy 最快，直连放最后（国内云基本不通，但海外机器用得上）
+PROXIES=("https://gh-proxy.com/" "https://ghfast.top/" "https://ghproxy.net/" "" )
 
 MIN_BYTES=60000000
 
