@@ -73,6 +73,17 @@ def build_nodes(comfy: str, out: str) -> None:
     print("nodes.tar.gz    %.1f MB" % (os.path.getsize(dst) / 1e6))
 
 
+def build_workflows(repo: str, out: str) -> None:
+    """工作流单独打成 tar：tar 原样保存文件名字节，解压端 locale 不会把中文名弄乱"""
+    src = os.path.join(repo, "workflows")
+    dst = os.path.join(out, "workflows.tar.gz")
+    with tarfile.open(dst, "w:gz") as tar:
+        for fn in sorted(os.listdir(src)):
+            if fn.lower().endswith(".json"):
+                tar.add(os.path.join(src, fn), arcname=fn)
+    print("workflows.tar.gz %.1f MB" % (os.path.getsize(dst) / 1e6))
+
+
 def build_zip(repo: str, out: str) -> None:
     dst = os.path.join(out, "cloud-kit.zip")
     include = sorted(
@@ -87,7 +98,7 @@ def build_zip(repo: str, out: str) -> None:
             for f in files:
                 fp = os.path.join(root, f)
                 z.write(fp, os.path.relpath(fp, repo).replace(os.sep, "/"))
-        for tar_name in ("comfyui.tar.gz", "nodes.tar.gz"):
+        for tar_name in ("comfyui.tar.gz", "nodes.tar.gz", "workflows.tar.gz"):
             z.write(os.path.join(out, tar_name), tar_name)
     print("cloud-kit.zip   %.1f MB" % (os.path.getsize(dst) / 1e6))
 
@@ -104,6 +115,7 @@ def main() -> int:
     if not args.skip_comfyui:
         build_comfyui(args.comfy, args.out)
     build_nodes(args.comfy, args.out)
+    build_workflows(repo, args.out)
     build_zip(repo, args.out)
     print("done ->", args.out)
     return 0
