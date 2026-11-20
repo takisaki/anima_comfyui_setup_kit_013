@@ -78,7 +78,7 @@ def build_zip(repo: str, out: str) -> None:
     dst = os.path.join(out, "cloud-kit.zip")
     include = sorted(
         f for f in os.listdir(repo)
-        if f.endswith((".sh", ".py", ".bat", ".ps1")) or f == "models.tsv"
+        if f.endswith((".sh", ".py", ".bat", ".ps1")) or f in ("models.tsv", "VERSION")
     )
     with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:
         for f in include:
