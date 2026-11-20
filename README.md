@@ -47,7 +47,10 @@ rm -rf /root/kit && unzip -q /root/cloud-kit.zip -d /root/kit
 # 3) 安装
 cd /root/kit && bash setup_all.sh --yes
 ```
-
+```bash
+# 4) 如果驱动之前未装需要重启系统，等待重启后重连，查看日志跟踪后台安装进度
+tail -f /root/kit/setup.log
+```
 代理都不通时，在**本机**下载 `cloud-kit.zip` 再上传：
 
 ```powershell
