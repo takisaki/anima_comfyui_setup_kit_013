@@ -152,7 +152,7 @@ bash 04_start.sh
 看到 `Starting server` 后，在你电脑上另开一个 PowerShell（**也别关**）：
 
 ```powershell
-ssh -N -L 8188:127.0.0.1:8188 root@<服务器IP>
+ssh -N -p <SSH端口> -L 8188:127.0.0.1:8188 root@<服务器IP>
 ```
 
 浏览器打开 **http://127.0.0.1:8188**。
@@ -323,7 +323,7 @@ bash 04_start.sh
 ### 5.2 在本机开隧道（另开一个 PowerShell，别关）
 
 ```powershell
-ssh -N -L 8188:127.0.0.1:8188 root@<服务器IP>
+ssh -N -p <SSH端口> -L 8188:127.0.0.1:8188 root@<服务器IP>
 ```
 
 然后浏览器打开 **http://127.0.0.1:8188** —— 就和本地 ComfyUI 一模一样。
