@@ -67,7 +67,7 @@ cd /root/kit && bash 04_start.sh
 
 ```powershell
 # 本机：开 SSH 隧道（窗口别关）
-ssh -N -p 你的端口 -L 8188:127.0.0.1:8188 root@<服务器IP>
+ssh -N -L 8188:127.0.0.1:8188 -p 你的端口 root@<服务器IP>
 ```
 
 本机浏览器打开 http://127.0.0.1:8188 。ComfyUI 无鉴权，所以走隧道而不是直接开端口。
