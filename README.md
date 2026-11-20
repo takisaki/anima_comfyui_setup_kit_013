@@ -55,7 +55,7 @@ tail -f /root/kit/setup.log
 
 ```powershell
 # Windows PowerShell
-scp D:\你的路径\cloud-kit.zip root@<服务器IP>:/root/
+scp D:\你的路径\cloud-kit.zip -p 你的端口 root@服务器IP地址:/root/
 ```
 
 ### 部署完成后
@@ -79,7 +79,7 @@ bash 04_start.sh --logs      # 日志
 
 ```powershell
 # 本机：开 SSH 隧道（窗口别关）
-ssh -N -L 8188:127.0.0.1:8188 -p 你的端口 root@<服务器IP>
+ssh -N -L 8188:127.0.0.1:8188 -p 你的端口 root@服务器IP地址
 ```
 
 本机浏览器打开 http://127.0.0.1:8188 。ComfyUI 无鉴权，所以走隧道而不是直接开端口。
