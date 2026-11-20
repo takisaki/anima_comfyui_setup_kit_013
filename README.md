@@ -48,7 +48,7 @@ rm -rf /root/kit && unzip -q /root/cloud-kit.zip -d /root/kit
 cd /root/kit && bash setup_all.sh --yes
 ```
 ```bash
-# 4) 如果驱动之前未装需要重启系统，等待重启后重连，查看日志跟踪后台安装进度
+# 4) 如果之前没装驱动需要重启系统，等待重启后重连，查看日志跟踪后台安装进度
 tail -f /root/kit/setup.log
 ```
 代理都不通时，在**本机**下载 `cloud-kit.zip` 再上传：
@@ -65,9 +65,17 @@ scp D:\你的路径\cloud-kit.zip -p 你的端口 root@服务器IP地址:/root/
 cd /root/kit && bash 04_start.sh
 ```
 
-这是**预期行为**：SSH 断开 → 服务退出。想让服务脱离终端常驻，才用 `--daemon`：
+```powershell
+# 本机：开 SSH 隧道（窗口别关）
+ssh -N -L 8188:127.0.0.1:8188 -p 你的端口 root@服务器IP地址
+```
 
+UI界面：本机浏览器打开 http://127.0.0.1:8188 。ComfyUI 无鉴权，所以走隧道而不是直接开端口。
+
+
+若SSH 断开 → 服务会退出，这是**预期行为**。想让服务脱离终端常驻，用 `--daemon`：
 ```bash
+# 服务器：（可选）命令
 bash 04_start.sh --daemon    # 后台常驻 + 开机自启
 bash 04_start.sh --stop      # 停止并取消自启
 bash 04_start.sh --status    # 状态
@@ -76,13 +84,6 @@ bash 04_start.sh --logs      # 日志
 
 > 断网（不是正常断开）时，服务是否退出取决于 sshd 多久发现对端消失，默认可能要等很久。
 > 想让它几十秒内就停，配一次 `ClientAliveInterval`，见 [docs/guide.md](docs/guide.md) 4.5 节。
-
-```powershell
-# 本机：开 SSH 隧道（窗口别关）
-ssh -N -L 8188:127.0.0.1:8188 -p 你的端口 root@服务器IP地址
-```
-
-本机浏览器打开 http://127.0.0.1:8188 。ComfyUI 无鉴权，所以走隧道而不是直接开端口。
 
 出图前自检：
 
