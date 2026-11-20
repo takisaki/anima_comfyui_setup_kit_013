@@ -34,18 +34,33 @@ fetch_comfyui() {
   done
   return 1
 }
-if [ -f "$COMFY/main.py" ]; then
-  c_ok "已存在 $COMFY"
-elif [ -f "$KIT/comfyui.tar.gz" ] && \
-     tar -xzf "$KIT/comfyui.tar.gz" -C /root 2>/dev/null && [ -d /root/ComfyUI ]; then
-  [ "$COMFY" = "/root/ComfyUI" ] || { rm -rf "$COMFY"; mv /root/ComfyUI "$COMFY"; }
-  c_ok "已用随包源码解压到 $COMFY（不依赖 GitHub）"
-elif fetch_comfyui; then
+# 判断已解压的 ComfyUI 是否完整（缺 comfy/ldm/models 就是残缺包）
+comfy_ok() {
+  [ -f "$COMFY/main.py" ] && [ -f "$COMFY/comfy/sd.py" ] && [ -d "$COMFY/comfy/ldm/models" ]
+}
+
+# 覆盖式解压：只补程序文件，已下载的 models/ 和 user/ 不会被删
+extract_bundle() {
+  [ -f "$KIT/comfyui.tar.gz" ] || return 1
+  local tmp=/root/.comfy-src
+  rm -rf "$tmp"; mkdir -p "$tmp"
+  tar -xzf "$KIT/comfyui.tar.gz" -C "$tmp" || { rm -rf "$tmp"; return 1; }
+  [ -d "$tmp/ComfyUI" ] || { rm -rf "$tmp"; return 1; }
+  mkdir -p "$COMFY"
+  cp -a "$tmp/ComfyUI/." "$COMFY/" || { rm -rf "$tmp"; return 1; }
+  rm -rf "$tmp"
+  return 0
+}
+
+if comfy_ok; then
+  c_ok "ComfyUI 已就绪: $COMFY"
+elif extract_bundle && comfy_ok; then
+  c_ok "已用随包源码覆盖到 $COMFY（不依赖 GitHub；models/ 与 user/ 保留）"
+elif fetch_comfyui && comfy_ok; then
   c_ok "ComfyUI 已解压到 $COMFY"
 else
-  c_err "ComfyUI 源码下载失败：所有 GitHub 通道不可用"
-  echo "   手动方案：本机下载 https://github.com/comfyanonymous/ComfyUI/archive/refs/heads/master.zip"
-  echo "   scp 到 /root/comfy.zip 后重跑本脚本"
+  c_err "ComfyUI 源码不可用：随包源码缺失且所有 GitHub 通道不通"
+  echo "   解决：重新下载最新 cloud-kit.zip（内含完整源码）后重跑"
   exit 1
 fi
 
