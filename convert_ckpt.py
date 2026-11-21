@@ -1,5 +1,11 @@
-# 把 ComfyUI 的 .ckpt 单文件底模转成 .safetensors（避免 pickle 风险，也省一点空间）
+# 把 .ckpt 底模转成 .safetensors（避免 pickle 风险，也省一点空间）
+# 当前模型清单里没有 .ckpt，正常部署用不到；留着方便以后加自己的底模。
+# 用法: python convert_ckpt.py <输入.ckpt> [输出.safetensors]
 import os, sys
+
+if len(sys.argv) < 2:
+    print("用法: python convert_ckpt.py <输入.ckpt> [输出.safetensors]")
+    sys.exit(1)
 
 COMFY = os.environ.get("COMFY", "/root/ComfyUI")
 sys.path.insert(0, COMFY)
@@ -7,12 +13,12 @@ sys.path.insert(0, COMFY)
 from comfy.utils import load_torch_file
 from safetensors.torch import save_file
 
-src = os.path.join(COMFY, "models/checkpoints/sd-v1-5-inpainting.ckpt")
-dst = os.path.join(COMFY, "models/checkpoints/sd-v1-5-inpainting.safetensors")
+src = sys.argv[1]
+dst = sys.argv[2] if len(sys.argv) > 2 else os.path.splitext(src)[0] + ".safetensors"
 
 if not os.path.isfile(src):
-    print("没有 .ckpt，跳过")
-    sys.exit(0)
+    print("找不到", src)
+    sys.exit(1)
 
 print("读取", src)
 sd = load_torch_file(src)

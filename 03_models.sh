@@ -18,9 +18,9 @@ for a in "$@"; do
     --help|-h)
       cat <<EOF
 用法: [TIER=core|std|pro] [SOURCE=auto|hf|ms] bash 03_models.sh [--check|--list]
-  core  5.8 GB   Anima 三件套 + 参考图适配器
-  std  15.1 GB   + SD1.5 局部重绘 + ControlNet + IPAdapter + CLIP-Vision
-  pro  19.3 GB   + anima-base
+  core  5.8 GB   Anima 三件套 + 参考图适配器 + LLLite 姿势模型
+  std  15.3 GB   + WAI-Illustrious 底模 + SDXL scribble ControlNet
+  pro   同 std
 EOF
       exit 0 ;;
   esac
@@ -118,15 +118,6 @@ if [ -n "$MANUAL" ]; then
   echo "  cp /root/upload/control_*.safetensors $COMFY/models/controlnet/ 2>/dev/null"
 fi
 
-CKPT="$COMFY/models/checkpoints/sd-v1-5-inpainting.ckpt"
-ST="$COMFY/models/checkpoints/sd-v1-5-inpainting.safetensors"
-if [ -f "$CKPT" ] && [ ! -f "$ST" ]; then
-  c_log "转换 .ckpt -> .safetensors"
-  if ( source "$COMFY/venv/bin/activate" && COMFY="$COMFY" python "$KIT/convert_ckpt.py" ); then
-    [ "${KEEP_CKPT:-0}" = "1" ] || { rm -f "$CKPT"; c_ok "已删除 .ckpt"; }
-  else
-    c_warn "转换失败：在 04 工作流里把底模改选 sd-v1-5-inpainting.ckpt"
-  fi
-fi
+# 当前清单没有 .ckpt 权重，不需要转换
 df -h /root | tail -1
 [ "$FAIL" = "0" ] && c_ok "步骤 3 完成" || exit 2

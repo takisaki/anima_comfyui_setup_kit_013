@@ -1,0 +1,7 @@
+# build_pack.py 只打包这里列出的 custom_nodes 子目录
+# 删掉一行即可把对应节点从部署包里去掉；文件不存在时打包全部
+ComfyUI-Manager
+ComfyUI-Anima-Ref-Adapter
+comfyui_controlnet_aux
+game_sd_character_pack
+ComfyUI-Character-Helper

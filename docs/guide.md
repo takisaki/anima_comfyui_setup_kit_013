@@ -6,7 +6,7 @@
 
 | 包含 | 不包含 |
 | --- | --- |
-| 安装脚本、8 个工作流、10 个节点包、版本矩阵与踩坑结论 | 模型权重（脚本自己下，约 14 GB） |
+| 安装脚本、6 个工作流、5 个节点包、版本矩阵与踩坑结论 | 模型权重（脚本自己下，约 15.3 GB） |
 | | 你的私人 LoRA（需要的话自己传） |
 
 **你不需要**在电脑上装 Python、ComfyUI 或提前下模型。所有安装动作都在服务器上完成。
@@ -129,8 +129,8 @@ apt-get update && apt-get install -y unzip
 | 驱动 | 没有 `nvidia-smi` 时装 580，**自动重启** | 3-5 分钟 + 重启 |
 | 重启后 | systemd 服务自动续跑，不用重新登录 | 1 分钟 |
 | 01 | venv + torch 2.9.1 + ComfyUI + requirements | 5-10 分钟 |
-| 02 | 10 个节点 + 依赖 + 8 个工作流 | 5-10 分钟 |
-| 03 | 14 GB 模型（ModelScope 加速） | 5-30 分钟 |
+| 02 | 5 个节点 + 依赖 + 6 个工作流 + 节点补丁 | 5-10 分钟 |
+| 03 | 15.3 GB 模型（ModelScope 加速） | 5-30 分钟 |
 
 **重启后你不需要做任何事。** 想盯进度就再开一个终端：
 
@@ -201,13 +201,13 @@ ssh -N -p <SSH端口> -L 8188:127.0.0.1:8188 root@<服务器IP>
 cd /root/kit && bash 05_verify.sh
 ```
 
-三段输出分别是：模型齐不齐、10 个节点能否导入（结尾要 `退出码: 0`）、磁盘占用。
+三段输出分别是：模型齐不齐、5 个节点能否导入（结尾要 `退出码: 0`）、磁盘占用。
 
 ## 5. 装完想改参数
 
 - 模型三档：见 A4（`TIER=core|std|pro bash 03_models.sh`）
 - 显存不够 / 想调快慢：见 A8
-- 想换工作流：界面左上「工作流 → 打开」，8 个都在里面
+- 想换工作流：界面左上「工作流 → 打开」，6 个都在里面
 
 ---
 
@@ -231,7 +231,7 @@ cd /root/kit && bash 05_verify.sh
 | NVIDIA 驱动 | **>= 560**（脚本装 580） | PyTorch 2.9 的 wheel 是 CUDA 12.8 构建，535 带不动 |
 | PyTorch | **>= 2.7**（脚本装 2.9.1 + cu128） | ComfyUI 这一版依赖的 `comfy_kitchen 0.2.41` 用了新版 `torch.library.infer_schema` 语法，2.5/2.6 会直接抛 ValueError，**ComfyUI 起不来** |
 | Python | 3.10（Ubuntu 22.04 自带） | — |
-| 磁盘 | >= 40 GB 可用 | 依赖 8 GB + 模型 14 GB |
+| 磁盘 | >= 40 GB 可用 | 依赖 8 GB + 模型 15.3 GB |
 
 这三条不满足时脚本会自动处理（装驱动、重启、换 torch 版本），但**不要手动 pip install 旧版 torch**。
 
@@ -250,7 +250,7 @@ cd /root/kit && bash 05_verify.sh
 
 | 文件 | 大小 | 必需 | 说明 |
 | --- | --- | --- | --- |
-| `cloud-kit.zip` | ~76 MB | ✅ | 脚本 + 8 个工作流 + 节点包 + **ComfyUI 源码**（12 MB，离线安装，不依赖 GitHub） |
+| `cloud-kit.zip` | ~76 MB | ✅ | 脚本 + 6 个工作流 + 节点包 + **ComfyUI 源码**（12 MB，离线安装，不依赖 GitHub） |
 | `extras_optional.tar.gz` | ~2.5 GB | ⬜ | 你的 LoRA、放大模型、YOLO 检测模型（HF 上没有的私有文件） |
 
 **为什么不上传模型**：本地 models 有 50 GB，20M 上传要 5 小时；云端从 hf-mirror 下 15 GB 通常几分钟。只传"配方"，不传"原料"。
@@ -312,8 +312,8 @@ bash setup_all.sh --yes
 | --- | --- | --- |
 | `00_preflight.sh` | 查显卡/磁盘/网络/镜像站速度（只读） | 30 秒 |
 | `01_comfyui.sh` | apt 依赖 + Python venv + CUDA torch 2.5.1 + ComfyUI 本体 | 8–15 分钟 |
-| `02_nodes.sh` | 解压 10 个节点包 + 装各自 pip 依赖 + 拷工作流 | 5–10 分钟 |
-| `03_models.sh` | 按清单下模型（默认 std 档 15.1 GB） | 5 分钟～100 分钟（看入方向带宽） |
+| `02_nodes.sh` | 解压 5 个节点包 + 装 pip 依赖 + 打节点补丁 + 预下 DWPose 权重 + 拷工作流 | 5–10 分钟 |
+| `03_models.sh` | 按清单下模型（默认 std 档 15.3 GB） | 5 分钟～100 分钟（看入方向带宽） |
 
 > 装到一半断了不要紧：每个脚本都能重跑，`03_models.sh` 会断点续传。
 
@@ -323,8 +323,8 @@ bash setup_all.sh --yes
 
 ```bash
 TIER=core bash 03_models.sh    #  5.8 GB  Anima 全家桶（出图主力）
-TIER=std  bash 03_models.sh    # 15.1 GB  再加 SD1.5 局部重绘 + ControlNet + IPAdapter（默认）
-TIER=pro  bash 03_models.sh    # 19.3 GB  再加 anima-base 高质量版
+TIER=std  bash 03_models.sh    # 15.3 GB  再加 WAI 底模 + SDXL scribble ControlNet（默认）
+TIER=pro  bash 03_models.sh    # 同 std（清单里已没有 rank 3 的模型）
 
 bash 03_models.sh --list       # 只看清单不下载
 bash 03_models.sh --check      # 只检查缺不缺
@@ -332,16 +332,11 @@ bash 03_models.sh --check      # 只检查缺不缺
 
 | 档 | 内容 | 能干什么 |
 | --- | --- | --- |
-| core | anima-turbo + qwen 文本编码器 + qwen VAE + 参考图适配器 | 文生图、参考图转表情/换角度 |
-| std | + SD1.5 inpaint 底模 + openpose/lineart_anime ControlNet + IPAdapter + CLIP-Vision | 手绘局部重绘、姿势控制、线稿上色、角色一致 |
-| pro | + anima-base | 高质量慢速出图 |
+| core | anima-turbo + qwen 文本编码器 + qwen VAE + 参考图适配器 + LLLite 姿势模型 | 文生图、姿势控制、局部重绘、角色一致 |
+| std | + WAI-Illustrious 底模 + SDXL scribble ControlNet | 线稿上色、WAI 文生图 |
+| pro | 同 std（清单里已没有 rank 3 的模型） | — |
 
-**SDXL 底模（WAI）HF 上没有可直连的单文件版**，要走另一条路：从你本机传上去（6.5 GB）。
-
-```powershell
-scp "D:\ComfyUI\models\checkpoints\WAI-SHUFFLE-NOOB_V-Pred-02.safetensors" ^
-    root@<服务器IP>:/root/ComfyUI/models/checkpoints/
-```
+**WAI 底模走 ModelScope**（`wjlcl0919/wai-Illustrious_v150`，6.94 GB），脚本自动下载，不需要手动传；ModelScope 也不通时再按 A12 的方式从本机上传。
 
 ---
 
@@ -391,19 +386,20 @@ bash 05_verify.sh
 
 ### A7. 工作流对照
 
-`02_nodes.sh` 已把 8 个工作流拷到 `ComfyUI/user/default/workflows/`，界面左上「工作流 → 打开」即可。
+`02_nodes.sh` 已把 6 个工作流拷到 `ComfyUI/user/default/workflows/`，界面左上「工作流 → 打开」即可。
 
 | 工作流 | 需要什么模型 | 档位 |
 | --- | --- | --- |
-| 01_线稿上色 | SD1.5 + lineart_anime ControlNet | std |
+| 01_线稿上色 | WAI-Illustrious（SDXL）+ SDXL scribble ControlNet | std |
 | 02_anima_turbo | Anima Turbo 三件套 | core |
-| 03_姿势控制_角色一致 | SD1.5 + openpose + IPAdapter + CLIP-Vision | std |
-| 04_手绘局部重绘Real | SD1.5 inpaint | std |
-| 05_角色_Anima资产 | Anima Turbo + 角色节点 | core |
-| 06/07_参考图转表情 | Anima + 参考图适配器 | core |
-| WAI-NOOB_10MIN+ | WAI SDXL 底模 | 需手动上传 |
+| 03_WAI-illustrious-v15 | WAI-Illustrious 底模 | std |
+| 04_姿势控制_角色一致 | Anima Turbo + LLLite pose + Ref Adapter + DWPose | core |
+| 05_手绘局部重绘 | Anima Turbo + qwen VAE | core |
+| 06_角色_Anima资产 | Anima Turbo + CharacterHelper / GameSD 资产节点 | core |
 
-**有一处必须手改**：`03_models.sh` 下的 inpaint 底模会从 `.ckpt` 自动转成 `.safetensors`（工作流里写的就是这个名字）。如果转换失败，打开 04 工作流把底模下拉改选 `sd-v1-5-inpainting.ckpt` 即可。
+**01 工作流**：WAI（SDXL）底模 + SDXL 版 scribble 控制网，同架构可直接跑；线稿/草图都行，强度 0.8、832×1216。
+
+**04 工作流的补丁**：`02_nodes.sh` 会自动执行 `patches/apply_anima_ref_adapter_patch.py`，让 Anima LLLite 与 Ref Adapter 能同时使用（否则 `KeyError: 'model_patch_data'`）。补丁可重复执行，节点更新后重跑一次即可。
 
 ---
 
@@ -444,10 +440,10 @@ EXTRA="--force-fp16" bash 04_start.sh
 | venv（CUDA torch + 依赖） | ~8 GB |
 | ComfyUI 本体 + 前端 | ~1 GB |
 | 节点 + 依赖 | ~2 GB |
-| 模型 core / std / pro | 5.8 / 15.1 / 19.3 GB |
+| 模型 core / std / pro | 5.8 / 15.3 / 15.3 GB |
 | output + 临时 | 2–3 GB |
 
-std 档约 **29 GB**，剩 20 GB 左右，够放 SDXL 底模。空间不够时：
+std 档合计约 **31 GB**（模型 15.3 GB），40 GB 盘剩 9 GB 左右。空间不够时：
 
 ```bash
 pip cache purge; rm -rf /root/.cache
@@ -540,19 +536,19 @@ SOURCE=hf bash 03_models.sh
 
 | 文件 | 本地路径 | 大小 |
 | --- | --- | --- |
-| `anima_ref_adapter_v2_r64.safetensors` | `models\loras\` | 176 MB |
-| `control_v11p_sd15s2_lineart_anime_fp16.safetensors` | `models\controlnet\` | 690 MB |
+| `anima_ref_adapter_v2_r64.safetensors` | `models\loras\` | 184 MB |
+| `controlnet-scribble-sdxl-1.0.safetensors` | `models\controlnet\` | 2.4 GB |
 
 ```powershell
 scp "D:\ComfyUI\models\loras\anima_ref_adapter_v2_r64.safetensors" root@<IP>:/root/upload/
-scp "D:\ComfyUI\models\controlnet\control_v11p_sd15s2_lineart_anime_fp16.safetensors" root@<IP>:/root/upload/
+scp "D:\ComfyUI\models\controlnet\controlnet-scribble-sdxl-1.0.safetensors" root@<IP>:/root/upload/
 ```
 
 装完后放到位：
 
 ```bash
 cp /root/upload/*.safetensors /root/ComfyUI/models/loras/ 2>/dev/null
-cp /root/upload/control_v11p_sd15s2_lineart_anime_fp16.safetensors /root/ComfyUI/models/controlnet/
+cp /root/upload/controlnet-scribble-sdxl-1.0.safetensors /root/ComfyUI/models/controlnet/
 ```
 
 ---
@@ -582,7 +578,7 @@ cd /root/kit && bash 03_models.sh --check
 
 - See-through 拆层不可用：需要 `bitsandbytes` + 12GB 以上显存 + 1280px 输入，11GB 的 2080Ti 跑不动
 - fp8/fp4 加速关闭：`comfy_kitchen` 的 CUDA 后端要求 CUDA 13+，本环境是 12.8，会自动降级到 eager 实现（不影响出图）
-- 工作流 `WAI-NOOB_10MIN+` 需要 SDXL 底模，HF/ModelScope 无可直连版本，需自行上传
+- Anima Ref Adapter 的补丁在节点更新后会被覆盖，重跑 `patches/apply_anima_ref_adapter_patch.py` 即可
 
 ### A16. 维护者：发布新版本
 

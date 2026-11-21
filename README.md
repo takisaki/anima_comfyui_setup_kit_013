@@ -4,11 +4,13 @@
 
 在**裸 Ubuntu GPU 实例**上一键部署 ComfyUI + Anima 出图工作流，面向 RTX 2080Ti 11GB（Turing / sm_75）。
 
-一条命令完成：装显卡驱动 → 自动重启续跑 → CUDA 版 PyTorch → ComfyUI → 10 个自定义节点 → 14 GB 模型。
+一条命令完成：装显卡驱动 → 自动重启续跑 → CUDA 版 PyTorch → ComfyUI → 5 个自定义节点 → 15.3 GB 模型 → 6 个工作流。
 
 ## 特性
 
 - **零交互**：`bash setup_all.sh --yes` 之后不需要任何人工操作，驱动装完自动重启并续跑
+- **只装要用的**：模型清单按现有工作流裁剪（`models.tsv`），节点按 `nodes.keep` 打包，不再带 IPAdapter / openpose / SD1.5 inpaint 等已停用的权重
+- **带节点补丁**：`02_nodes.sh` 自动给 ComfyUI-Anima-Ref-Adapter 打补丁，修掉 Anima LLLite + Ref Adapter 同时使用时的 `KeyError: 'model_patch_data'`
 - **不写死镜像**：apt / pip / PyTorch / 模型源全部运行时探测测速，失败自动切换并缓存结果
 - **可重入**：任何一步中断后重跑都会跳过已完成部分，模型下载支持断点续传
 - **版本受控**：驱动、torch、comfy_kitchen 的兼容关系固定在文档里，避免“装上了但起不来”
@@ -99,21 +101,35 @@ cd /root/kit && bash 05_verify.sh
 
 | 变量 | 默认 | 作用 |
 | --- | --- | --- |
-| `TIER` | `std` | 模型档位：`core` 5.8 GB / `std` 15.1 GB / `pro` 19.3 GB |
+| `TIER` | `std` | 模型档位：`core` 5.8 GB / `std` 15.3 GB / `pro`（当前同 std） |
 | `SOURCE` | `auto` | 模型源：`auto` 测速选择 / `hf` hf-mirror / `ms` ModelScope |
 | `HF_BASE` | `https://hf-mirror.com` | HF 镜像地址 |
 | `EXTRA` | 空 | 启动附加参数，如 `--medvram`、`--force-fp16` |
 | `LISTEN` | `127.0.0.1` | 监听地址，`0.0.0.0` 才可公网直连 |
 | `PORT` | `8188` | 端口 |
-| `KEEP_CKPT` | `0` | 设 `1` 保留转换前的 `.ckpt` |
 
 示例：
 
 ```bash
-TIER=core bash 03_models.sh        # 只装最小集
+TIER=core bash 03_models.sh        # 只装最小集（Anima 全家桶）
 SOURCE=ms bash 03_models.sh        # 强制走 ModelScope
 EXTRA="--medvram" bash 04_start.sh # 显存不够时
 ```
+
+## 工作流与所需模型
+
+`02_nodes.sh` 会把 `workflows/` 里的 6 个流程拷到 `ComfyUI/user/default/workflows/`：
+
+| 工作流 | 需要的权重 | 档位 |
+| --- | --- | --- |
+| 01_线稿上色 | WAI-Illustrious（SDXL）+ SDXL scribble ControlNet | std |
+| 02_anima_turbo | Anima Turbo 三件套 | core |
+| 03_WAI-illustrious-v15 | WAI-Illustrious 底模 | std |
+| 04_姿势控制_角色一致 | Anima Turbo + LLLite pose + Ref Adapter + DWPose | core |
+| 05_手绘局部重绘 | Anima Turbo + qwen VAE | core |
+| 06_角色_Anima资产 | Anima Turbo + CharacterHelper / GameSD 资产节点 | core |
+
+> **01 工作流**：底模是 WAI（SDXL），控制网用 SDXL 版 scribble（`controlnet-scribble-sdxl-1.0`），两者同架构，可直接跑；线稿/草图都能吃，强度 0.8、832×1216。
 
 ## 项目结构
 
@@ -123,7 +139,7 @@ EXTRA="--medvram" bash 04_start.sh # 显存不够时
 ├── lib.sh                # 网络层：候选源、测速、断点续传、状态缓存
 ├── 00_preflight.sh       # 环境体检（只读）
 ├── 01_comfyui.sh         # 系统依赖 + venv + torch + ComfyUI
-├── 02_nodes.sh           # 节点 + 依赖 + 工作流
+├── 02_nodes.sh           # 节点 + 依赖 + 工作流 + 节点补丁 + DWPose 权重
 ├── 03_models.sh          # 模型下载
 ├── 04_start.sh           # 启动
 ├── 05_verify.sh          # 自检
@@ -131,9 +147,11 @@ EXTRA="--medvram" bash 04_start.sh # 显存不够时
 ├── fix_env.sh            # 急救：doctor / apt / gpu / net
 ├── get_kit.sh            # 带镜像回退的部署包下载器
 ├── models.tsv            # 模型清单（分档 / HF 路径 / ModelScope 仓库 / 字节数）
+├── nodes.keep            # 打包哪些 custom_nodes
 ├── check_models.py       # 清单校验
-├── convert_ckpt.py       # .ckpt → .safetensors
-├── workflows/            # 8 个 ComfyUI 工作流
+├── convert_ckpt.py       # .ckpt → .safetensors（当前清单用不到）
+├── workflows/            # 6 个 ComfyUI 工作流
+├── patches/              # 节点补丁（Anima Ref Adapter × LLLite）
 ├── scripts/
 │   ├── build_pack.py     # 打包发布件
 │   └── publish_release.py# 发布到 GitHub Release
@@ -151,7 +169,7 @@ python3 scripts/build_pack.py --comfy /path/to/ComfyUI --out dist
 
 # 发布新版本（读 Git Credential Manager 里的凭据，不存明文 token）
 python3 scripts/publish_release.py --repo takisaki/anima_comfyui_setup_kit_013 \
-  --tag v1.1 --file dist/cloud-kit.zip --name cloud-kit.zip --notes "变更说明"
+  --tag v1.4 --file dist/cloud-kit.zip --name cloud-kit.zip --notes "变更说明"
 ```
 
 CI（`.github/workflows/ci.yml`）：`bash -n` 全量脚本 + `py_compile` + shellcheck error 级别。
@@ -176,6 +194,7 @@ CI（`.github/workflows/ci.yml`）：`bash -n` 全量脚本 + `py_compile` + she
 | pip 超时 | 脚本自动换源；`bash fix_env.sh net` 看各站速度 |
 | 下载卡在 0 B/s | 已内置 10 KB/s 熔断，会自动换源；仍失败见 guide 的方式 B |
 | ComfyUI 起不来 | 先确认驱动、torch、comfy_kitchen 三者版本 |
+| 04 工作流报 `KeyError: 'model_patch_data'` | 补丁没生效：`python3 patches/apply_anima_ref_adapter_patch.py /root/ComfyUI` 后重启 |
 
 更多见 [docs/guide.md](docs/guide.md) 的 A10 / A12 两节。
 
@@ -183,9 +202,9 @@ CI（`.github/workflows/ci.yml`）：`bash -n` 全量脚本 + `py_compile` + she
 
 - See-through 拆层不可用：需 `bitsandbytes` + ≥12 GB 显存 + 1280px 输入
 - fp8/fp4 加速关闭：`comfy_kitchen` 的 CUDA 后端要求 CUDA 13+，本环境 12.8 会自动降级到 eager
-- 工作流 `WAI-NOOB_10MIN+` 需要 SDXL 底模，公开源无可直连版本，需自行提供
+- Anima Ref Adapter 的补丁是本地补丁，节点用 Manager 更新后需要重跑一次补丁脚本
 
 ## 许可
 
-本仓库未声明开源许可。随包下载的模型与权重（Anima、ControlNet、IP-Adapter 等）各自遵循其原始许可，
+本仓库未声明开源许可。随包下载的模型与权重（Anima、WAI-Illustrious、ControlNet、Anima LLLite、Anima Ref Adapter 等）各自遵循其原始许可，
 其中 Anima 及其参考图适配器为 **非商用** 许可，商用前请核对各模型仓库的 LICENSE。

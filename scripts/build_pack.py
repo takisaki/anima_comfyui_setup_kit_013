@@ -21,7 +21,7 @@ TOP_SKIP = {
     "venv", ".venv", "dist", "cloud-kit",
 }
 # 任意层级都要排除
-NEST_SKIP = {"__pycache__", ".git", ".github", ".pytest_cache", ".mypy_cache"}
+NEST_SKIP = {"__pycache__", ".git", ".github", ".pytest_cache", ".mypy_cache", "ckpts"}
 SKIP_EXT = {".pyc", ".pyo", ".log", ".tar", ".gz", ".zip", ".7z", ".pt.tmp"}
 SKIP_PREFIX = ("extras_", "cloud-kit")
 
@@ -62,14 +62,27 @@ def build_comfyui(comfy: str, out: str) -> None:
     print("comfyui.tar.gz  %.1f MB" % (os.path.getsize(dst) / 1e6))
 
 
+def node_keep() -> set:
+    """nodes.keep 里列出的 custom_nodes 子目录；文件不存在时返回空集合（打包全部）。"""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "nodes.keep")
+    if not os.path.isfile(path):
+        return set()
+    with open(path, encoding="utf-8") as fh:
+        return {ln.strip() for ln in fh if ln.strip() and not ln.strip().startswith("#")}
+
+
 def build_nodes(comfy: str, out: str) -> None:
     src = os.path.join(comfy, "custom_nodes")
     dst = os.path.join(out, "nodes.tar.gz")
+    keep = node_keep()
     with tarfile.open(dst, "w:gz") as tar:
         for d in sorted(os.listdir(src)):
             p = os.path.join(src, d)
-            if os.path.isdir(p) and d not in NEST_SKIP:
-                add_tree(tar, p, "custom_nodes/" + d)
+            if not os.path.isdir(p) or d in NEST_SKIP:
+                continue
+            if keep and d not in keep:
+                continue
+            add_tree(tar, p, "custom_nodes/" + d)
     print("nodes.tar.gz    %.1f MB" % (os.path.getsize(dst) / 1e6))
 
 
@@ -88,7 +101,7 @@ def build_zip(repo: str, out: str) -> None:
     dst = os.path.join(out, "cloud-kit.zip")
     include = sorted(
         f for f in os.listdir(repo)
-        if f.endswith((".sh", ".py", ".bat", ".ps1")) or f in ("models.tsv", "VERSION")
+        if f.endswith((".sh", ".py", ".bat", ".ps1")) or f in ("models.tsv", "nodes.keep", "VERSION")
     )
     with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:
         for f in include:
@@ -98,6 +111,13 @@ def build_zip(repo: str, out: str) -> None:
             for f in files:
                 fp = os.path.join(root, f)
                 z.write(fp, os.path.relpath(fp, repo).replace(os.sep, "/"))
+        for sub in ("patches", "docs"):
+            for root, _dirs, files in os.walk(os.path.join(repo, sub)):
+                for f in files:
+                    if f.endswith((".pyc", ".pyo")):
+                        continue
+                    fp = os.path.join(root, f)
+                    z.write(fp, os.path.relpath(fp, repo).replace(os.sep, "/"))
         for tar_name in ("comfyui.tar.gz", "nodes.tar.gz", "workflows.tar.gz"):
             z.write(os.path.join(out, tar_name), tar_name)
     print("cloud-kit.zip   %.1f MB" % (os.path.getsize(dst) / 1e6))

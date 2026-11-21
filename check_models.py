@@ -12,7 +12,8 @@ with open(os.path.join(KIT, "models.tsv"), encoding="utf-8") as fh:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        rank, dest, name, rel, size = line.split("|")
+        parts = line.split("|")
+        rank, dest, name, size = parts[0], parts[1], parts[2], parts[4]
         size = int(size)
         p = os.path.join(COMFY, "models", dest, name)
         alt = os.path.join(COMFY, "models", dest, os.path.splitext(name)[0] + ".safetensors")
