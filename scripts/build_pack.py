@@ -111,7 +111,7 @@ def build_zip(repo: str, out: str) -> None:
             for f in files:
                 fp = os.path.join(root, f)
                 z.write(fp, os.path.relpath(fp, repo).replace(os.sep, "/"))
-        for sub in ("patches", "docs"):
+        for sub in ("docs",):
             for root, _dirs, files in os.walk(os.path.join(repo, sub)):
                 for f in files:
                     if f.endswith((".pyc", ".pyo")):

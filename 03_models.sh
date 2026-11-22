@@ -18,8 +18,8 @@ for a in "$@"; do
     --help|-h)
       cat <<EOF
 用法: [TIER=core|std|pro] [SOURCE=auto|hf|ms] bash 03_models.sh [--check|--list]
-  core  5.8 GB   Anima 三件套 + 参考图适配器 + LLLite 姿势模型
-  std  15.3 GB   + WAI-Illustrious 底模 + SDXL scribble ControlNet
+  core  5.6 GB   Anima 三件套（02/05/06）
+  std  20.9 GB   + WAI 底模 + SDXL scribble/openpose 控制网 + SDXL IPAdapter
   pro   同 std
 EOF
       exit 0 ;;

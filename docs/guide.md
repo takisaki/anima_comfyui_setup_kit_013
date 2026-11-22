@@ -6,14 +6,14 @@
 
 | 包含 | 不包含 |
 | --- | --- |
-| 安装脚本、6 个工作流、5 个节点包、版本矩阵与踩坑结论 | 模型权重（脚本自己下，约 15.3 GB） |
+| 安装脚本、6 个工作流、5 个节点包、版本矩阵与踩坑结论 | 模型权重（脚本自己下，约 20.9 GB） |
 | | 你的私人 LoRA（需要的话自己传） |
 
 **你不需要**在电脑上装 Python、ComfyUI 或提前下模型。所有安装动作都在服务器上完成。
 
 ## 1. 你只需要准备三样
 
-1. 一台 GPU 云服务器：Ubuntu 22.04 + NVIDIA 显卡 + **40 GB 以上可用磁盘**
+1. 一台 GPU 云服务器：Ubuntu 22.04 + NVIDIA 显卡 + **50 GB 以上可用磁盘**
 2. 服务器的**公网 IP** 和 **SSH 端口**
 3. 一个能开终端的电脑（Windows 的 PowerShell 就够）
 
@@ -129,8 +129,8 @@ apt-get update && apt-get install -y unzip
 | 驱动 | 没有 `nvidia-smi` 时装 580，**自动重启** | 3-5 分钟 + 重启 |
 | 重启后 | systemd 服务自动续跑，不用重新登录 | 1 分钟 |
 | 01 | venv + torch 2.9.1 + ComfyUI + requirements | 5-10 分钟 |
-| 02 | 5 个节点 + 依赖 + 6 个工作流 + 节点补丁 | 5-10 分钟 |
-| 03 | 15.3 GB 模型（ModelScope 加速） | 5-30 分钟 |
+| 02 | 5 个节点包 + 依赖 + 6 个工作流 | 5-10 分钟 |
+| 03 | 20.9 GB 模型（ModelScope 加速） | 5-30 分钟 |
 
 **重启后你不需要做任何事。** 想盯进度就再开一个终端：
 
@@ -231,7 +231,7 @@ cd /root/kit && bash 05_verify.sh
 | NVIDIA 驱动 | **>= 560**（脚本装 580） | PyTorch 2.9 的 wheel 是 CUDA 12.8 构建，535 带不动 |
 | PyTorch | **>= 2.7**（脚本装 2.9.1 + cu128） | ComfyUI 这一版依赖的 `comfy_kitchen 0.2.41` 用了新版 `torch.library.infer_schema` 语法，2.5/2.6 会直接抛 ValueError，**ComfyUI 起不来** |
 | Python | 3.10（Ubuntu 22.04 自带） | — |
-| 磁盘 | >= 40 GB 可用 | 依赖 8 GB + 模型 15.3 GB |
+| 磁盘 | >= 50 GB 可用 | 依赖 8 GB + 模型 20.9 GB |
 
 这三条不满足时脚本会自动处理（装驱动、重启、换 torch 版本），但**不要手动 pip install 旧版 torch**。
 
@@ -312,8 +312,8 @@ bash setup_all.sh --yes
 | --- | --- | --- |
 | `00_preflight.sh` | 查显卡/磁盘/网络/镜像站速度（只读） | 30 秒 |
 | `01_comfyui.sh` | apt 依赖 + Python venv + CUDA torch 2.5.1 + ComfyUI 本体 | 8–15 分钟 |
-| `02_nodes.sh` | 解压 5 个节点包 + 装 pip 依赖 + 打节点补丁 + 预下 DWPose 权重 + 拷工作流 | 5–10 分钟 |
-| `03_models.sh` | 按清单下模型（默认 std 档 15.3 GB） | 5 分钟～100 分钟（看入方向带宽） |
+| `02_nodes.sh` | 解压 5 个节点包 + 装 pip 依赖 + 预下 DWPose 权重 + 拷工作流 | 5–10 分钟 |
+| `03_models.sh` | 按清单下模型（默认 std 档 20.9 GB） | 5 分钟～100 分钟（看入方向带宽） |
 
 > 装到一半断了不要紧：每个脚本都能重跑，`03_models.sh` 会断点续传。
 
@@ -322,8 +322,8 @@ bash setup_all.sh --yes
 ### A4. 模型三档，按磁盘和时间选
 
 ```bash
-TIER=core bash 03_models.sh    #  5.8 GB  Anima 全家桶（出图主力）
-TIER=std  bash 03_models.sh    # 15.3 GB  再加 WAI 底模 + SDXL scribble ControlNet（默认）
+TIER=core bash 03_models.sh    #  5.6 GB  Anima 三件套（02/05/06 出图主力）
+TIER=std  bash 03_models.sh    # 20.9 GB  再加 WAI 底模 + 两张 SDXL 控制网 + SDXL IPAdapter（默认全量）
 TIER=pro  bash 03_models.sh    # 同 std（清单里已没有 rank 3 的模型）
 
 bash 03_models.sh --list       # 只看清单不下载
@@ -332,8 +332,8 @@ bash 03_models.sh --check      # 只检查缺不缺
 
 | 档 | 内容 | 能干什么 |
 | --- | --- | --- |
-| core | anima-turbo + qwen 文本编码器 + qwen VAE + 参考图适配器 + LLLite 姿势模型 | 文生图、姿势控制、局部重绘、角色一致 |
-| std | + WAI-Illustrious 底模 + SDXL scribble ControlNet | 线稿上色、WAI 文生图 |
+| core | anima-turbo + qwen 文本编码器 + qwen VAE | 文生图（02）、局部重绘（05）、角色资产（06） |
+| std | + WAI-Illustrious 底模 + SDXL scribble/openpose 控制网 + SDXL IPAdapter + ViT-H 编码器 | 线稿上色（01）、WAI 文生图（03）、姿势控制 + 角色一致（04） |
 | pro | 同 std（清单里已没有 rank 3 的模型） | — |
 
 **WAI 底模走 ModelScope**（`wjlcl0919/wai-Illustrious_v150`，6.94 GB），脚本自动下载，不需要手动传；ModelScope 也不通时再按 A12 的方式从本机上传。
@@ -393,13 +393,13 @@ bash 05_verify.sh
 | 01_线稿上色 | WAI-Illustrious（SDXL）+ SDXL scribble ControlNet | std |
 | 02_anima_turbo | Anima Turbo 三件套 | core |
 | 03_WAI-illustrious-v15 | WAI-Illustrious 底模 | std |
-| 04_姿势控制_角色一致 | Anima Turbo + LLLite pose + Ref Adapter + DWPose | core |
+| 04_姿势控制_角色一致 | WAI + SDXL openpose ControlNet + SDXL IPAdapter + CLIP-ViT-H + DWPose | std |
 | 05_手绘局部重绘 | Anima Turbo + qwen VAE | core |
-| 06_角色_Anima资产 | Anima Turbo + CharacterHelper / GameSD 资产节点 | core |
+| 06_角色_Anima资产 | Anima Turbo + CharacterHelper + GameSD 资产节点 | core |
 
 **01 工作流**：WAI（SDXL）底模 + SDXL 版 scribble 控制网，同架构可直接跑；线稿/草图都行，强度 0.8、832×1216。
 
-**04 工作流的补丁**：`02_nodes.sh` 会自动执行 `patches/apply_anima_ref_adapter_patch.py`，让 Anima LLLite 与 Ref Adapter 能同时使用（否则 `KeyError: 'model_patch_data'`）。补丁可重复执行，节点更新后重跑一次即可。
+**04 工作流的姿势**：用 SDXL 版 openpose ControlNet（强度 0.9）+ SDXL IPAdapter（0.75 / linear）做角色一致，姿势图先过 `DWPreprocessor` 提骨架；如果手里已经是骨架图，可以 Ctrl+B 旁路 `DWPreprocessor`，把骨架直接接到 ControlNet 的 image 上。
 
 ---
 
@@ -440,10 +440,10 @@ EXTRA="--force-fp16" bash 04_start.sh
 | venv（CUDA torch + 依赖） | ~8 GB |
 | ComfyUI 本体 + 前端 | ~1 GB |
 | 节点 + 依赖 | ~2 GB |
-| 模型 core / std / pro | 5.8 / 15.3 / 15.3 GB |
+| 模型 core / std / pro | 5.6 / 20.9 / 20.9 GB |
 | output + 临时 | 2–3 GB |
 
-std 档合计约 **31 GB**（模型 15.3 GB），40 GB 盘剩 9 GB 左右。空间不够时：
+std 档合计约 **37 GB**（模型 20.9 GB），50 GB 盘剩 12 GB 左右。空间不够时：
 
 ```bash
 pip cache purge; rm -rf /root/.cache
@@ -578,7 +578,7 @@ cd /root/kit && bash 03_models.sh --check
 
 - See-through 拆层不可用：需要 `bitsandbytes` + 12GB 以上显存 + 1280px 输入，11GB 的 2080Ti 跑不动
 - fp8/fp4 加速关闭：`comfy_kitchen` 的 CUDA 后端要求 CUDA 13+，本环境是 12.8，会自动降级到 eager 实现（不影响出图）
-- Anima Ref Adapter 的补丁在节点更新后会被覆盖，重跑 `patches/apply_anima_ref_adapter_patch.py` 即可
+- 04 工作流同时叠 ControlNet + IPAdapter，是显存占用最高的一条；11 GB 卡上建议 `EXTRA="--medvram"` 启动
 
 ### A16. 维护者：发布新版本
 

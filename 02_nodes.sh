@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 步骤 2：节点 + 依赖 + 工作流 + 节点补丁 + 预处理器权重
+# 步骤 2：节点 + 依赖 + 工作流 + 预处理器权重
 set -uo pipefail
 KIT="$(cd "$(dirname "$0")" && pwd)"
 source "$KIT/lib.sh"
@@ -12,15 +12,6 @@ c_log "解压节点"
 mkdir -p "$COMFY/custom_nodes"
 tar -xzf "$KIT/nodes.tar.gz" -C "$COMFY"
 c_ok "节点数: $(ls -1d "$COMFY"/custom_nodes/*/ 2>/dev/null | wc -l)"
-
-PYBIN="python3"
-[ -x "$COMFY/venv/bin/python" ] && PYBIN="$COMFY/venv/bin/python"
-c_log "打补丁: Anima Ref Adapter（与 Anima LLLite 共存）"
-if "$PYBIN" "$KIT/patches/apply_anima_ref_adapter_patch.py" "$COMFY"; then
-  c_ok "补丁就绪"
-else
-  c_warn "补丁未应用：04 工作流同时用 LLLite + Ref Adapter 会报 KeyError: 'model_patch_data'"
-fi
 
 # DWPreprocessor（04 工作流）首次运行会自己下载权重；这里先下好，避免第一次出图卡住
 aux_fetch() {
